@@ -1,0 +1,31 @@
+{
+  "name": "leaderboards",
+  "version": "1.0.0",
+  "description": "Sports leaderboard",
+  "main": "index.js",
+  "scripts": {
+    "test": "",
+    "clean": "del leaderboardcore.zip",
+    "build": "7z a leaderboardcore.zip *.js",
+    "deploy": "aws lambda update-function-code --function-name LeaderBoard --zip-file fileb://leaderboardcore.zip --publish",
+    "chaindeploy": "npm run clean && npm run build && npm run deploy"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Karvaporsas/leaderboards.git"
+  },
+  "keywords": [
+    "sports",
+    "bot",
+    "telegram"
+  ],
+  "author": "Karvaporsas",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Karvaporsas/leaderboards/issues"
+  },
+  "homepage": "https://github.com/Karvaporsas/leaderboards#readme",
+  "dependencies": {
+    "aws-sdk": "^2.1343.0"
+  }
+}
