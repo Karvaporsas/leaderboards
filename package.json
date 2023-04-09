@@ -6,9 +6,12 @@
   "scripts": {
     "test": "",
     "clean": "del leaderboardcore.zip",
-    "build": "7z a leaderboardcore.zip *.js",
+    "build": "7z a leaderboardcore.zip services database *.js",
     "deploy": "aws lambda update-function-code --function-name LeaderBoard --zip-file fileb://leaderboardcore.zip --publish",
-    "chaindeploy": "npm run clean && npm run build && npm run deploy"
+    "chaindeploy": "npm run clean && npm run build && npm run deploy",
+    "clean_layer": "del leaderboardlayer.zip && rmdir nodejs",    
+    "build_layer": "npx copyfiles -u 1 \"node_modules/**/*\" \"nodejs/node_modules\" && 7z a leaderboardlayer.zip nodejs",
+    "deploy_layer": "aws lambda publish-layer-version --layer-name LeaderboardLayer --zip-file fileb://leaderboardlayer.zip --description \"Layer for leaderboards\" --compatible-architectures \"x86_64\" --compatible-runtimes nodejs18.x"
   },
   "repository": {
     "type": "git",
@@ -26,6 +29,12 @@
   },
   "homepage": "https://github.com/Karvaporsas/leaderboards#readme",
   "dependencies": {
-    "aws-sdk": "^2.1343.0"
+    "aws-sdk": "^2.1343.0",
+    "axios": "^1.3.4",
+    "lodash": "^4.17.21",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "copyfiles": "^2.4.1"
   }
 }

@@ -48,8 +48,16 @@ module.exports = {
      */
     getEventUserId(event) {
         var userId = 0;
-
-        if (event.body.message && event.body.message.from) userId = event.body.message.from.id;
+        if (event.body.message && event.body.message.from) {
+            console.log("Getting data from body message");
+            console.log(event.body.message.from);
+            userId = event.body.message.from.id;
+        }         
+        if (userId === 0 && event.body.callback_query && event.body.callback_query.from) {
+            console.log("Getting data from body callback message");
+            console.log(event.body.callback_query.from);
+            userId = event.body.callback_query.from.id;
+        } 
 
         return userId;
     },
@@ -131,6 +139,8 @@ module.exports = {
             chatId = event.body.message.chat.id;
         } else if (event.body.channel_post && event.body.channel_post.chat && event.body.channel_post.chat.id) {
             chatId = event.body.channel_post.chat.id;
+        } else if (event.body.callback_query && event.body.callback_query.message && event.body.callback_query.message.chat) {
+            chatId = event.body.callback_query.message.chat.id;
         }
 
         return chatId;

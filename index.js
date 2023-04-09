@@ -2,8 +2,10 @@
 /*jshint esversion: 6 */
 'use strict';
 
-//const commands = require('./commands');
+const commands = require('./commands');
+const talker = require('./talker');
 const helper = require('./helper');
+const messageSender = require('./messageSender');
 //const telegramMessageSender = require('./telegramMessageSender');
 const DEBUG_MODE = process.env.DEBUG_MODE === 'ON';
 
@@ -13,7 +15,7 @@ const DEBUG_MODE = process.env.DEBUG_MODE === 'ON';
  * @param context Lambda context
  * @returns HTML status response with statusCode 200
  */
-exports.handler = (event, context) => {
+exports.handler = async (event, context) => {
     console.log('starting to process message');
 
     const chatId = helper.getEventChatId(event);
@@ -24,40 +26,25 @@ exports.handler = (event, context) => {
     if (DEBUG_MODE) {
         console.log(event.body);
     }
+    var result = await commands.processCommand(event, chatId);
 
-    /*commands.processCommand(event, chatId).then((result) => {
-        if (DEBUG_MODE) {
-            console.log('Done, result is: ');
-            console.log(result);
-        }
+    console.log("RESULT:");
+    console.log(result);
+    console.log(chatId);
+    
+    if (result.status === 0) {
+        result = await talker.chat(event, chatId);        
+    }
+    
+    if (result.status === 1) {
+        await messageSender.sendMessageToTelegram(chatId, result);
+    }    
 
-        if(result.status === 1) {
-            var messageSendingPromises = [];
-
-            if (result.hasMultipleMessages) {
-                for (const cid of result.chatIds) {
-                    messageSendingPromises.push(telegramMessageSender.sendMessageToTelegram(cid, result.message));
-                }
-            } else {
-                messageSendingPromises.push(telegramMessageSender.sendMessageToTelegram(chatId, result));
-            }
-
-            Promise.all(messageSendingPromises).then(() => {
-                context.succeed('Message sent');
-            }).catch((e) => {
-                console.error("Failed to send message");
-                console.log(e);
-                context.fail(e);
-            });
-        } else {
-            //Not error, but not a success
-            context.succeed('No need to send message');
-        }
-    }).catch((e) => {
-        console.log("Error handling command");
-        console.log(e);
-        context.fail(e);
-    });*/
+    if (result.status !== 1) {
+        //Not error, but not a success
+        context.succeed('No need to send message');
+        return standardResponse;
+    }
 
     return standardResponse;
 };
