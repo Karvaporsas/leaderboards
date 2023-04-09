@@ -6,34 +6,17 @@ const helper = require('./helper');
 const scoreService = require('./services/scoreService');
 const queryingService = require('./services/queryingService');
 const utils = require('./utils');
-//const utils = require('./utils');
-//const statsHandler = require('./handlers/statsHandler');
-//const pushHandler = require('./handlers/pushHanlder');
-//const chartsHandler = require('./handlers/chartsHandler');
-const SECRET_CHALLENGE = process.env.SECRET_CHALLENGE;
-
-const INTERNAL_COMMANDS = {
-    SET_SCORE: "setScore"
-}
 const INTERNAL_STEPS = utils.getInternalSteps();
 
-function _getHelpMessage(resolve, reject) {
-    var message = `Harmi`;
-
-    resolve({
-        status: 1,
-        type: 'text',
-        message: message
-    });
-}
-
 function determineNextQuery(type) {
+    console.log(`Determining type ${type}`);
     switch (type) {
         case INTERNAL_STEPS.QUERYING_SCORETYPES:
             return INTERNAL_STEPS.QUERYING_REPS;
         case INTERNAL_STEPS.QUERYING_REPS:
             return INTERNAL_STEPS.QUERYING_WEIGHT;
         case INTERNAL_STEPS.QUERYING_WEIGHT:
+            return INTERNAL_STEPS.READY_TO_SAVE;
         default:
             return null;
     }
@@ -49,63 +32,54 @@ module.exports.chat = async function (event, chatId) {
     
     let messageText = helper.getEventMessageText(event);
     let command = helper.parseCommand(messageText);
-    let userid = helper.getEventUserId(event);
+    let userId = helper.getEventUserId(event);
     console.log(command);
     console.log(event);
     console.log(event.body);
-    console.log(userid);
+    console.log(userId);
 
     let exercise = "";
-    let userToRespond = userid;
-    let chatToRespond = chatId;
-    let step = "";
 
-    console.log('Checking if is callback');
-    if (helper.isCallback(event)) {
-        console.log('Was indeed. Now Parsing data');
-        let data = helper.parseCallbackData(helper.getCallbackData(event));
-        let callbackId = helper.getCallbackId(event);
-        let callbackUserId = helper.getCallbackUserId(event);
-        let replyId = helper.getCallbackReplyId(event);
-        let replyChatId = helper.getCallbackChatId(event);
-        let first = data.shift();
-
-        console.log(first);
-        console.log(data);
-        if (first === INTERNAL_STEPS.QUERYING_SCORETYPES) {
-            exercise = data[0];
-            userToRespond = data[1];
-            chatToRespond = data[2];
-            step = first;
-        }
-        
-        await queryingService.addWaitingQuery(userid, chatId, INTERNAL_STEPS.QUERYING_REPS, exercise);
-
-        result = await scoreService.askRepCount(userToRespond, chatToRespond);
-        return result;
-    }
-    console.log('Was not a callback');
-    let queries = await queryingService.loadWaitingQueries(userToRespond, chatToRespond);
+    let queries = await queryingService.loadWaitingQueries(userId, chatId);
     console.log('Got queries');
     console.log(queries);
     
     if (!queries || !queries.length) return result;
     let first = queries[0];
+    let exerciseCandidate = helper.getMessageText(event);    
+    let isValidScoreType = scoreService.isSupportedScoreType(exerciseCandidate);    
 
-    await queryingService.deleteQueries(queries);    
+    if (first.QUERYTYPE === INTERNAL_STEPS.QUERYING_SCORETYPES && !isValidScoreType) return {status: 1, message: 'Did not recognize score type. Try again.', type: 'text'};
+    
+    await queryingService.deleteQueries(queries);
+    console.log("All deletions done. Determining next step");    
 
-    let nextQuery = determineNextQuery(first.type);
+    let nextQuery = determineNextQuery(first.QUERYTYPE);
 
-    switch (nextQuery) {
-        case INTERNAL_STEPS.QUERYING_WEIGHT:            
-            let reps = parseInt(messageText.replace(',','.'));
-            await queryingService.addWaitingQuery(userToRespond, chatToRespond, nextQuery, first.EXERCISE, reps);
-            result = await scoreService.askWeight(userToRespond, chatToRespond);
-            
+    switch (first.QUERYTYPE) {
+        case INTERNAL_STEPS.QUERYING_SCORETYPES:            
+            exercise = exerciseCandidate;
+            await queryingService.addWaitingQuery(userId, chatId, nextQuery, exercise);
+            result = await scoreService.askRepCount(exercise);
             return result;
-        default:
+
+        case INTERNAL_STEPS.QUERYING_REPS:
+            let reps = parseInt(messageText.replace(',','.'));
+            console.log(`Got ${reps} reps`);
+            await queryingService.addWaitingQuery(userId, chatId, nextQuery, first.EXERCISE, reps);
+            console.log("Asking weight");
+            result = await scoreService.askWeight(exercise);            
+            return result;
+
+        case INTERNAL_STEPS.QUERYING_WEIGHT:        
             let weight = parseFloat(messageText.replace(',','.'));
-            await scoreService.updateScore(userToRespond, chatToRespond, first.EXERCISE, first.REPS, weight);
-            return {status: 1};
+            console.log(`Got weight of ${weight}`);
+            await scoreService.updateScore(userId, chatId, first.EXERCISE, first.REPS, weight);
+            result = await scoreService.informUser(first.EXERCISE, first.REPS, weight);
+            return result;
+
+        default:
+            console.log("Unknown step. Don't know what to do...");
+            return {status: 0};
     }
 }

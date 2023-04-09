@@ -5,7 +5,8 @@
 const INTERNAL_STEPS = {
     QUERYING_SCORETYPES: 'scoretypes',
     QUERYING_REPS: 'reps',
-    QUERYING_WEIGHT: 'weight'
+    QUERYING_WEIGHT: 'weight',
+    READY_TO_SAVE: 'readytosave'
 }
 
 /**

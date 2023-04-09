@@ -147,10 +147,19 @@ module.exports.sendMessageToTelegram = async function(chatId, messageObject) {
     }
 
     if(messageObject.keyboard) {
+        if (messageObject.messageId) form.reply_to_message_id = messageObject.messageId;
+        
         form.reply_markup = JSON.stringify({
-            inline_keyboard: helper.createKeyboardLayout(messageObject.keyboard, _keyboard_cols),
+            keyboard: [[{text: "A"}, {text: "B"}]],
+            one_time_keyboard: messageObject.hideKeyboard ? true : false,
+            selective: true
         });
-    }
+                
+        /* JSON.stringify({
+            keyboard:  [{text: "A"}, {text: "B"}], //helper.createKeyboardLayout(messageObject.keyboard, _keyboard_cols),
+            one_time_keyboard: messageObject.hideKeyboard ? true : false
+        });*/
+    }    
 
     let url = `${URL_BASE}${TELEGRAM_TOKEN}/${method}`;
 
@@ -159,7 +168,7 @@ module.exports.sendMessageToTelegram = async function(chatId, messageObject) {
         console.log(url);
     }
     console.log("NOW SENDING WITH AXIOS");
-    result = await Axios.post(url, form);    
+    result = await Axios.post(url, form);
 
     if (DEBUG_MODE) {
         console.log("Response from telegram:");

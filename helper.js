@@ -231,6 +231,12 @@ module.exports = {
 
         return id;
     },
+    getEventMessageId(event) {
+        let id = null;
+        if (event.body.message) id = event.body.message.message_id;
+
+        return id;
+    },
     parseCallbackData(dataString) {
         if (!dataString || !dataString.trim()) return [];
 
@@ -263,5 +269,12 @@ module.exports = {
         }
 
         return id;
+    },
+    getMessageText(event) {
+        let txt = "";
+
+        if (event.body && event.body.message) txt = event.body.message.text || "";
+
+        return txt;
     }
 };
