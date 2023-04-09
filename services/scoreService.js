@@ -24,17 +24,17 @@ module.exports.informUser = async function (exercise, reps, weight) {
     return {status: 1, message: `Saved ${exercise} with ${reps} reps of ${weight} kg!`, type: 'text'};
 }
 
-module.exports.updateScore = async function (userId, chatId, exercise, reps = 0, weight = 0) {
+module.exports.updateScore = async function (userId, chatId, exercise, reps = 0, weight = 0, username = "") {
     //if (updateData.exercise) database.update
-    console.log(`About to update ${userId}, ${chatId}, ${exercise}, ${reps}, ${weight}`);
+    console.log(`About to update ${userId}, ${chatId}, ${exercise}, ${reps}, ${weight} for ${username}`);
     let existing = await database.getScore(userId, chatId, exercise);
 
     if (existing && existing.length) {
-        await database.updateScore(existing[0].ID, userId, chatId, exercise, reps, weight);
+        await database.updateScore(existing[0].ID, userId, chatId, exercise, reps, weight, username);
         return {status: 1};
     }
 
-    await database.insertScore(userId, chatId, exercise, reps, weight);
+    await database.insertScore(userId, chatId, exercise, reps, weight, username);
     return {status: 1};
 }
 

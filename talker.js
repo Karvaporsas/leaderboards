@@ -30,10 +30,9 @@ module.exports.chat = async function (event, chatId) {
     console.log('Starting to chat');
     let result = {success: 0, message: "Nothing done"};
     
-    let messageText = helper.getEventMessageText(event);
-    let command = helper.parseCommand(messageText);
-    let userId = helper.getEventUserId(event);
-    console.log(command);
+    let messageText = helper.getEventMessageText(event);    
+    let userId = helper.getEventUserId(event);    
+    
     console.log(event);
     console.log(event.body);
     console.log(userId);
@@ -74,7 +73,7 @@ module.exports.chat = async function (event, chatId) {
         case INTERNAL_STEPS.QUERYING_WEIGHT:        
             let weight = parseFloat(messageText.replace(',','.'));
             console.log(`Got weight of ${weight}`);
-            await scoreService.updateScore(userId, chatId, first.EXERCISE, first.REPS, weight);
+            await scoreService.updateScore(userId, chatId, first.EXERCISE, first.REPS, weight, helper.getEventMessageName(event));
             result = await scoreService.informUser(first.EXERCISE, first.REPS, weight);
             return result;
 

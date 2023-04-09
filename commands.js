@@ -13,7 +13,8 @@ const INTERNAL_STEPS = utils.getInternalSteps();
 const SECRET_CHALLENGE = process.env.SECRET_CHALLENGE;
 
 const INTERNAL_COMMANDS = {
-    SET_SCORE: "setScore"
+    SET_SCORE: "setScore",
+    LEADERBOARDS: "leaderboards"
 }
 
 function _getHelpMessage(resolve, reject) {

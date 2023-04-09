@@ -6,7 +6,7 @@ const commands = require('./commands');
 const talker = require('./talker');
 const helper = require('./helper');
 const messageSender = require('./messageSender');
-//const telegramMessageSender = require('./telegramMessageSender');
+
 const DEBUG_MODE = process.env.DEBUG_MODE === 'ON';
 
 /**
@@ -28,9 +28,11 @@ exports.handler = async (event, context) => {
     }
     var result = await commands.processCommand(event, chatId);
 
-    console.log("RESULT:");
-    console.log(result);
-    console.log(chatId);
+    if (DEBUG_MODE) {
+        console.log("RESULT:");
+        console.log(result);
+        console.log(chatId);
+    }
     
     if (result.status === 0) {
         result = await talker.chat(event, chatId);        

@@ -178,15 +178,6 @@ module.exports = {
 
         return message;
     },
-    getSourceString(dataSource) {
-        switch (dataSource) {
-            case 'S3':
-                return '<strong>THL avoin data</strong>';
-            case 'DB':
-            default:
-                return '<strong>HS avoin data</strong>';
-        }
-    },
     getButtonData(hcds, callbackName, callBackData  = []) {
         var rs = [];
         var commandString = '';
@@ -195,7 +186,7 @@ module.exports = {
             var cbData = `${callbackName},${hcd}${commandString}`;
 
             rs.push({
-                callback_data: cbData,
+                //callback_data: cbData,
                 text: hcd
             });
         }
@@ -276,5 +267,20 @@ module.exports = {
         if (event.body && event.body.message) txt = event.body.message.text || "";
 
         return txt;
-    }
+    },
+    getEventMessageName(event) {
+        var name = '';
+
+        if (event.body.message && event.body.message.from) {
+            name = event.body.message.from.username;
+
+            if (!name) {
+                name = '' + event.body.message.from.first_name;
+
+                if (event.body.message.from.last_name) name += (' ' + event.body.message.from.last_name);
+            }            
+        }
+
+        return name;
+    },
 };

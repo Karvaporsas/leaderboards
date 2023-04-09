@@ -81,7 +81,7 @@ module.exports.deleteWaitingQuery = async function (userId, id) {
     }
 }
 
-module.exports.insertScore = async function (userId, chatId, exercise, reps, weight) {
+module.exports.insertScore = async function (userId, chatId, exercise, reps, weight, username) {
     let params = {
         TableName: USER_SCORE_LATEST,
         Item: {
@@ -90,6 +90,7 @@ module.exports.insertScore = async function (userId, chatId, exercise, reps, wei
             EXERCISE: exercise,
             REPS: reps,
             WEIGHT: weight,
+            USERNAME: username,
             ID: uuid.v4()            
         }
     }
@@ -106,23 +107,25 @@ module.exports.insertScore = async function (userId, chatId, exercise, reps, wei
     }    
 }
 
-module.exports.updateScore = async function (id, userId, chatId, exercise, reps, weight) {
+module.exports.updateScore = async function (id, userId, chatId, exercise, reps, weight, username) {
     let params = {
         TableName: USER_SCORE_LATEST,
         Key: {
             "USERID": "" + userId,
             "ID": id
         },
-        UpdateExpression: 'set #exercise = :exercise, #reps = :reps, #weight = :weight',
+        UpdateExpression: 'set #exercise = :exercise, #reps = :reps, #weight = :weight, #username = :username',
         ExpressionAttributeNames: {
             '#exercise': 'EXERCISE',
             '#reps': 'REPS',
-            '#weight': 'WEIGHT'
+            '#weight': 'WEIGHT',
+            '#username': 'USERNAME'
         },
         ExpressionAttributeValues: {
             ':exercise': exercise,
             ':reps': reps,
-            ':weight': weight
+            ':weight': weight,
+            ':username': username
         }
     };
     console.log(`updating score ${id} of ${userId}`);
