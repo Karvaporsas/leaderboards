@@ -8,10 +8,11 @@ const userService = require('./services/userService');
 const queryingService = require('./services/queryingService');
 const utils = require('./utils');
 const INTERNAL_STEPS = utils.getInternalSteps();
+const logger = require('./logger');
 
 
 function determineNextQuery(type) {
-    console.log(`Determining type ${type}`);
+    logger.debug(`Determining type ${type}`);
     switch (type) {
         case INTERNAL_STEPS.QUERYING_SCORETYPES:
             return INTERNAL_STEPS.QUERYING_REPS;
@@ -33,22 +34,22 @@ function determineNextQuery(type) {
  */
 
 module.exports.chat = async function (event, chatId) {
-    console.log('Starting to chat');
+    logger.debug('Starting to chat');
     let result = {success: 0, message: "Nothing done"};
     
     let messageText = helper.getEventMessageText(event);    
     let userId = helper.getEventUserId(event);
     let messageId = helper.getEventMessageId(event);
     
-    console.log(event);
-    console.log(event.body);
-    console.log(userId);
+    logger.debug(event);
+    logger.debug(event.body);
+    logger.debug(userId);
 
     let exercise = "";
 
     let queries = await queryingService.loadWaitingQueries(userId, chatId);
-    console.log('Got queries');
-    console.log(queries);
+    logger.debug('Got queries');
+    logger.debug(queries);
     
     if (!queries || !queries.length) return result;
     let first = queries[0];
@@ -61,7 +62,7 @@ module.exports.chat = async function (event, chatId) {
     if (first.QUERYTYPE === INTERNAL_STEPS.QUERYING_SCORETYPE_FOR_LEADERBOARD && !isValidLeaderboardType) return {status: 1, message: 'Did not recognize leaderboard type. Try again.', type: 'text'};
     
     await queryingService.deleteQueries(queries);
-    console.log("All deletions done. Determining next step");    
+    logger.debug("All deletions done. Determining next step");    
 
     let nextQuery = determineNextQuery(first.QUERYTYPE);
 
@@ -74,29 +75,29 @@ module.exports.chat = async function (event, chatId) {
 
         case INTERNAL_STEPS.QUERYING_REPS:
             let reps = parseInt(messageText.replace(',','.'));
-            console.log(`Got ${reps} reps`);
+            logger.debug(`Got ${reps} reps`);
             await queryingService.addWaitingQuery(userId, chatId, nextQuery, first.EXERCISE, reps);
-            console.log("Asking weight");
+            logger.debug("Asking weight");
             result = await scoreService.askWeight(first.EXERCISE);            
             return result;
 
         case INTERNAL_STEPS.QUERYING_WEIGHT:        
             let weight = parseFloat(messageText.replace(',','.'));
-            console.log(`Got weight of ${weight}`);
+            logger.debug(`Got weight of ${weight}`);
             await scoreService.updateScore(userId, chatId, first.EXERCISE, first.REPS, weight, helper.getEventMessageName(event));
             result = await scoreService.informUser(first.EXERCISE, first.REPS, weight);
             return result;
 
         case INTERNAL_STEPS.QUERYING_USER_HEIGHT:
             let height = parseFloat(messageText.replace(',','.'));
-            console.log(`Got height of ${height}`);
+            logger.debug(`Got height of ${height}`);
             await queryingService.addWaitingQuery(userId, chatId, nextQuery, "", 0, 0, height);
             result = userService.askUserWeight();
             return result;
 
         case INTERNAL_STEPS.QUERYING_USER_WEIGHT:
             let userweight = parseFloat(messageText.replace(',','.'));
-            console.log(`Got weight of ${userweight}`);
+            logger.debug(`Got weight of ${userweight}`);
             await userService.updateUserInfo(userId, chatId, userweight, first.USERHEIGHT);
             result = userService.informUser(userweight, first.USERHEIGHT);
             return result;
@@ -106,7 +107,7 @@ module.exports.chat = async function (event, chatId) {
             return result;
 
         default:
-            console.log("Unknown step. Don't know what to do...");
+            logger.debug("Unknown step. Don't know what to do...");
             return {status: 0};
     }
 }

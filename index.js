@@ -6,8 +6,7 @@ const commands = require('./commands');
 const talker = require('./talker');
 const helper = require('./helper');
 const messageSender = require('./messageSender');
-
-const DEBUG_MODE = process.env.DEBUG_MODE === 'ON';
+const logger = require('./logger');
 
 /**
  * Basic AWS Lambda handler. This is called when Telegram sends any messages to AWS API
@@ -16,23 +15,20 @@ const DEBUG_MODE = process.env.DEBUG_MODE === 'ON';
  * @returns HTML status response with statusCode 200
  */
 exports.handler = async (event, context) => {
-    console.log('starting to process message');
+    logger.debug('starting to process message');
 
     const chatId = helper.getEventChatId(event);
     const standardResponse = {
         statusCode: 200,
-    };
-
-    if (DEBUG_MODE) {
-        console.log(event.body);
-    }
+    };    
+    
+    logger.debug(event.body);
+    
     var result = await commands.processCommand(event, chatId);
-
-    if (DEBUG_MODE) {
-        console.log("RESULT:");
-        console.log(result);
-        console.log(chatId);
-    }
+    
+    logger.debug("RESULT:");
+    logger.debug(result);
+    logger.debug(chatId);
     
     if (result.status === 0) {
         result = await talker.chat(event, chatId);        

@@ -7,10 +7,9 @@ const scoreService = require('./services/scoreService');
 const userService = require('./services/userService');
 const queryingService = require('./services/queryingService');
 const utils = require('./utils');
+const logger = require('./logger');
 
 const INTERNAL_STEPS = utils.getInternalSteps();
-const SECRET_CHALLENGE = process.env.SECRET_CHALLENGE;
-
 const INTERNAL_COMMANDS = {
     SET_SCORE: "setscore",
     LEADERBOARDS: "leaderboards",
@@ -43,7 +42,7 @@ module.exports.processCommand = async function (event, chatId) {
             return scoreService.askLeaderboardType(userId, chatId, messageId);
 
         default:
-            console.log("Command not recognized");
+            logger.debug("Command not recognized");
             return result;
     }
 }

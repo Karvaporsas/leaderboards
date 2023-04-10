@@ -13,6 +13,8 @@ const INTERNAL_STEPS = {
     QUERYING_SCORETYPE_FOR_LEADERBOARD: 'scoretypesforleaderboards'
 }
 
+const logger = require('./logger');
+
 /**
  * Utils
  */
@@ -36,11 +38,11 @@ module.exports.performScan = async function(dynamoDb, params) {
     return new Promise((resolve, reject) => {
         function chatScan(err, data) {
             if (err) {
-                console.log("error while scanning");
-                console.log(err);
+                logger.debug("error while scanning");
+                logger.debug(err);
                 reject(err);
             } else if (!data) {
-                console.log("no data, no error");
+                logger.debug("no data, no error");
                 resolve(allResults);
             }
             allResults = allResults.concat(data.Items);
@@ -48,7 +50,7 @@ module.exports.performScan = async function(dynamoDb, params) {
             // continue scanning if we have more, because
             // scan can retrieve a maximum of 1MB of data
             if (typeof data.LastEvaluatedKey != "undefined") {
-                console.log("Scanning for more...");
+                logger.debug("Scanning for more...");
                 params.ExclusiveStartKey = data.LastEvaluatedKey;
                 dynamoDb.scan(params, chatScan);
             } else {

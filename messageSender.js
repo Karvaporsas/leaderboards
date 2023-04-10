@@ -2,14 +2,14 @@
 /*jshint esversion: 6 */
 'use strict';
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
-const DEBUG_MODE = process.env.DEBUG_MODE === 'ON';
 const helper = require('./helper');
 const FormData = require('form-data');
 const fs = require('fs');
 const Axios = require('axios');
-const _keyboard_cols = 2;
+const _keyboard_cols = 3;
 const URL_BASE = 'https://api.telegram.org/bot';
 const utils = require('./utils');
+const logger = require('./logger');
 
 function checkShouldEndListener(messageObject) {
     return new Promise((resolve, reject) => {
@@ -28,8 +28,8 @@ function checkShouldEndListener(messageObject) {
             rp(msg).then((r) => {
                 resolve(r);
             }).catch((e) => {
-                console.log('Error sending message');
-                console.log(e);
+                logger.debug('Error sending message');
+                logger.debug(e);
                 reject();
             });
         } else {
@@ -53,15 +53,13 @@ function checkShouldUpdate(messageObject) {
                 }
             };
 
-            console.log("Sending update message");
+            logger.debug("Sending update message");
             rp(secondMessage).then((r) => {
-                if (DEBUG_MODE) {
-                    console.log(r);
-                }
+                logger.debug(r);                
                 resolve(r);
             }).catch((e) => {
-                console.log('Error sending second message');
-                console.log(e);
+                logger.debug('Error sending second message');
+                logger.debug(e);
                 reject();
             });
         } else {
@@ -70,10 +68,9 @@ function checkShouldUpdate(messageObject) {
     });
 }
 
-function _sendByAxios(chatId, method, messageObject, resolve, reject) {
-    if (DEBUG_MODE) {
-        console.log(`ChatId is ${chatId}`);
-    }
+function _sendByAxios(chatId, method, messageObject, resolve, reject) {    
+    logger.debug(`ChatId is ${chatId}`);    
+
     if (messageObject.chatId && !chatId) chatId = messageObject.chatId;
     var url = `${URL_BASE}${TELEGRAM_TOKEN}/${method}`;
     var formData = new FormData();
@@ -101,8 +98,8 @@ function _sendByAxios(chatId, method, messageObject, resolve, reject) {
     }).then((listenerResponse) => {
         resolve(listenerResponse);
     }).catch((err) => {
-        console.log('Error while sending axios message');
-        console.log(err);
+        logger.debug('Error while sending axios message');
+        logger.debug(err);
         reject(err);
     });
 }
@@ -114,11 +111,9 @@ module.exports.sendMessageToTelegram = async function(chatId, messageObject) {
         chat_id: chatId
     };
 
-    if (DEBUG_MODE) {
-        console.log("Constructing message");
-        console.log(messageObject);
-        console.log(chatId);
-    }
+    logger.debug("Constructing message");
+    logger.debug(messageObject);
+    logger.debug(chatId);
 
     switch (messageObject.type) {
         case 'text':
@@ -142,7 +137,7 @@ module.exports.sendMessageToTelegram = async function(chatId, messageObject) {
             result = await _sendByAxios(chatId, method, messageObject, resolve, reject);
             
         default:
-            console.error(`Tried to send message with unknown type ${messageObject.type}`);
+            logger.fatal(`Tried to send message with unknown type ${messageObject.type}`);
             return utils.getStandardRepsonse('Insufficent message data');
     }
 
@@ -166,18 +161,15 @@ module.exports.sendMessageToTelegram = async function(chatId, messageObject) {
     }
 
     let url = `${URL_BASE}${TELEGRAM_TOKEN}/${method}`;
+    
+    logger.debug(form);
+    logger.debug(url);    
+    logger.debug("NOW SENDING WITH AXIOS");
 
-    if (DEBUG_MODE) {
-        console.log(form);
-        console.log(url);
-    }
-    console.log("NOW SENDING WITH AXIOS");
     result = await Axios.post(url, form);
 
-    if (DEBUG_MODE) {
-        console.log("Response from telegram:");
-        console.log(result);
-    }
+    logger.debug("Response from telegram:");
+    logger.debug(result);
 
     return result;
 }

@@ -2,6 +2,8 @@
 /*jshint esversion: 6 */
 'use strict';
 
+const logger = require('./logger');
+
 /**
  * Builds a constant length string with white space at the end
  *
@@ -49,13 +51,13 @@ module.exports = {
     getEventUserId(event) {
         var userId = 0;
         if (event.body.message && event.body.message.from) {
-            console.log("Getting data from body message");
-            console.log(event.body.message.from);
+            logger.debug("Getting data from body message");
+            logger.debug(event.body.message.from);
             userId = event.body.message.from.id;
         }         
         if (userId === 0 && event.body.callback_query && event.body.callback_query.from) {
-            console.log("Getting data from body callback message");
-            console.log(event.body.callback_query.from);
+            logger.debug("Getting data from body callback message");
+            logger.debug(event.body.callback_query.from);
             userId = event.body.callback_query.from.id;
         } 
 

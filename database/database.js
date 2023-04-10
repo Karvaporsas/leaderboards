@@ -4,6 +4,7 @@
 
 const AWS = require('aws-sdk');
 const utils = require('./../utils');
+const logger = require('./../logger');
 const WAITING_QUERIES = process.env.TABLE_WAITING_QUERIES;
 const USER_SCORE_LATEST = process.env.TABLE_USER_SCORE_LATEST;
 const USER = process.env.TABLE_USER;
@@ -29,7 +30,7 @@ module.exports.getWaitingQueries = async function(userId, chatId) {
         ProjectionExpression: 'USERID, CHATID, QUERYTYPE, EXERCISE, REPS, WEIGHT, ID, USERHEIGHT, USERWEIGHT'
     };
 
-    console.log(`Getting waiting queries for ${userId} and ${chatId}`);
+    logger.debug(`Getting waiting queries for ${userId} and ${chatId}`);
 
     let result = await dynamoDb.query(params).promise();    
 
@@ -82,13 +83,13 @@ module.exports.putWaitingQuery = async function (userId, chatId, type, exercise,
         }
     };
 
-    console.log("About to insert a query");
+    logger.debug("About to insert a query");
     try {
         await dynamoDb.put(params).promise();
         return {status: 1};
     } catch (e){
-        console.log('Inserting query failed');
-        console.log(e);
+        logger.debug('Inserting query failed');
+        logger.debug(e);
         return {status: -1, message: 'Insert failed'};
     }    
 }
@@ -101,14 +102,14 @@ module.exports.deleteWaitingQuery = async function (userId, id) {
             ID: id
         }
     };
-    console.log(`deleting ${userId} and ${id}`);
+    logger.debug(`deleting ${userId} and ${id}`);
     try {
         await dynamoDb.delete(params, () => {}).promise();
-        console.log("Deletion done");
+        logger.debug("Deletion done");
         return {status: 1};
     } catch (e){
-        console.log("ASSHOLE");
-        console.log(e);
+        logger.debug("ASSHOLE");
+        logger.debug(e);
         return {status: -1, message: 'Error deleting query'};
     }
 }
@@ -127,14 +128,12 @@ module.exports.insertScore = async function (userId, chatId, exercise, reps, wei
         }
     }
 
-    try {        
-        console.log('Inserting new score');
-        await dynamoDb.put(params).promise();
-        console.log('Done');
+    try {                
+        await dynamoDb.put(params).promise();        
         return {status: 1};
     } catch (e) {
-        console.log('Stupd ass mofo');
-        console.log(e);
+        logger.debug('Stupd ass mofo');
+        logger.debug(e);
         return {status: -1, message: 'Score insert failed'};
     }    
 }
@@ -151,13 +150,11 @@ module.exports.insertUser = async function (userId, chatId, weight, height) {
     }
 
     try {        
-        console.log('Inserting new user');
-        await dynamoDb.put(params).promise();
-        console.log('Done');
+        await dynamoDb.put(params).promise();        
         return {status: 1};
     } catch (e) {
-        console.log('Stupd ass mofo');
-        console.log(e);
+        logger.debug('Stupd ass mofo');
+        logger.debug(e);
         return {status: -1, message: 'User insert failed'};
     }
 }
@@ -183,13 +180,13 @@ module.exports.updateScore = async function (id, userId, chatId, exercise, reps,
             ':username': username
         }
     };
-    console.log(`updating score ${id} of ${userId}`);
+    logger.debug(`updating score ${id} of ${userId}`);
     try {
         await dynamoDb.update(params).promise();
         return {status: 1};
     } catch (e) {
-        console.log('Update failed bad');
-        console.log(e);
+        logger.debug('Update failed bad');
+        logger.debug(e);
         return {status: -1};
     }    
 }
@@ -217,8 +214,8 @@ module.exports.updateUser = async function (userId, chatId, weight, height) {
         await dynamoDb.update(params).promise();
         return {status: 1};
     } catch (e) {
-        console.log('Update failed bad');
-        console.log(e);
+        logger.debug('Update failed bad');
+        logger.debug(e);
         return {status: -1};
     }    
 }
@@ -237,19 +234,19 @@ module.exports.getScore = async function (userId, chatId, exercise) {
     };   
 
     try {
-        console.log(`Querying scores`);
-        console.log(params);
+        logger.debug(`Querying scores`);
+        logger.debug(params);
         let result = await dynamoDb.query(params).promise();    
         result = result.Items || [];
-        console.log('Got scores');
-        console.log(result);
+        logger.debug('Got scores');
+        logger.debug(result);
 
         return _.filter(result, function (s) {
             return s.CHATID === chatId && s.EXERCISE === exercise;
         });
     } catch (e) {
-        console.log("oh noes");
-        console.log(e);
+        logger.debug("oh noes");
+        logger.debug(e);
         return false;
     }
 }
@@ -263,17 +260,14 @@ module.exports.getUser = async function (userId) {
         ProjectionExpression: 'USERID, WEIGHT, HEIGHT, CHATID'
     };
     
-    try {
-        console.log(`Getting user ${userId}`);
-        let result = await dynamoDb.get(params).promise();    
-        console.log(result);
-        result = result.Item;
-        console.log('Got user');        
+    try {        
+        let result = await dynamoDb.get(params).promise();            
+        result = result.Item;        
 
         return result;
     } catch (e) {
-        console.log("oh noes");
-        console.log(e);
+        logger.debug("oh noes");
+        logger.debug(e);
         return false;
     }
 }

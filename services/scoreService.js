@@ -5,11 +5,19 @@
 const helper = require('./../helper');
 const database = require('./../database/database');
 const _ = require('lodash');
+const logger = require('./../logger');
 
 const WILKS_NEW = process.env.WILKS_NEW === 'ON';
 
 const combined = 'Combined score';
-const supportedTypes = ["Bench press", "Deadlift", "Squat"];
+const theBig3 = 'The Big 3';
+const theBig5 = 'The Big 5';
+const supportedTypes = ["Bench press", "Deadlift", "Squat", "Overhead press", "Curl"/*, "Chin up", "Pull up", "Push up"*/];
+const groups = [
+    {name: theBig3, members: [supportedTypes[0], supportedTypes[1], supportedTypes[2]]},
+    {name: theBig5, members: [supportedTypes[0], supportedTypes[1], supportedTypes[2], supportedTypes[3], supportedTypes[4]]},
+    /*{name: "Bodyweight", members: [supportedTypes[5], supportedTypes[6], supportedTypes[7]]}*/
+]
 const coeffsOld = {
     a: -216.0475144,
     b: 16.2606339,
@@ -39,12 +47,22 @@ function brzycki1RM (weight, reps) {
     return weight / (1.0278 - (0.0278 * reps));
 }
 
+function isFromGroup(txt) {
+    let result = false;
+
+    _.forEach(groups, function (g) {
+        if (g.name == txt) result = true;
+    });
+
+    return result;
+}
+
 module.exports.askScoreType = async function (userId, chatId, messageId) {
     return {status: 1, keyboard: helper.getButtonData(supportedTypes, 'scoretypes', [userId, chatId]), message: 'Which exercise score would you like to record?', type: 'text', hideKeyboard: true, messageId: messageId};
 }
 module.exports.askLeaderboardType = async function (userId, chatId, messageId) {
 
-    return {status: 1, keyboard: helper.getButtonData(_.concat(supportedTypes, combined), 'leaderboards', [userId, chatId]), message: 'Which leaderboard would you like to see?', type: 'text', hideKeyboard: true, messageId: messageId};
+    return {status: 1, keyboard: helper.getButtonData(_.concat(supportedTypes, combined, theBig3, theBig5), 'leaderboards', [userId, chatId]), message: 'Which leaderboard would you like to see?', type: 'text', hideKeyboard: true, messageId: messageId};
 }
 module.exports.askRepCount = async function (exercise = "") {    
     exercise = exercise.toLowerCase();
@@ -59,8 +77,7 @@ module.exports.informUser = async function (exercise, reps, weight) {
 }
 
 module.exports.updateScore = async function (userId, chatId, exercise, reps = 0, weight = 0, username = "") {
-    //if (updateData.exercise) database.update
-    console.log(`About to update ${userId}, ${chatId}, ${exercise}, ${reps}, ${weight} for ${username}`);
+    logger.debug(`About to update ${userId}, ${chatId}, ${exercise}, ${reps}, ${weight} for ${username}`);
     let existing = await database.getScore(userId, chatId, exercise);
 
     if (existing && existing.length) {
@@ -81,15 +98,26 @@ module.exports.isSupportedScoreType = function (txt) {
 }
 
 module.exports.isSupportedLeaderboardType = function (txt) {
-    if (txt == combined) return true;
+    if (txt == combined) return true;    
+    if (isFromGroup(txt)) return true;
 
     return this.isSupportedScoreType(txt);
 }
 
 module.exports.getLeaderboards = async function (chatId, exercise, messageId) {
-    let isAggregated = exercise === combined;    
+    let isAggregated = exercise === combined || isFromGroup(exercise);
     let searchExercise = isAggregated ? '' : exercise;
-    let rawScores = await database.getRelevantScores(chatId, searchExercise);    
+    let rawScores = await database.getRelevantScores(chatId, searchExercise);
+    
+    if (isFromGroup(exercise)) {
+        let group = _.find(groups, ['name', exercise]);
+        rawScores = _.filter(rawScores, function (rs) {
+            return _.find(group.members, (m) => {
+                return m === rs.EXERCISE;
+            });
+        });
+    }
+
     let usersByLatestChat = await database.getUsersInChat(chatId);
     
     let grouped = _.groupBy(rawScores, (rs) => {
@@ -116,8 +144,7 @@ module.exports.getLeaderboards = async function (chatId, exercise, messageId) {
             totalWeight: totalWeight,
             hasEstimations: hasEstimations
         });
-    });
-    console.log(scores);
+    });    
 
     for (let i = 0; i < scores.length; i+= 1) {
         let s = scores[i];

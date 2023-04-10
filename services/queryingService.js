@@ -2,8 +2,8 @@
 /*jshint esversion: 6 */
 'use strict';
 
-const helper = require('./../helper');
 const database = require('./../database/database');
+const logger = require('./../logger');
 
 
 module.exports.loadWaitingQueries = async function (userId, chatId) {
@@ -14,9 +14,9 @@ module.exports.addWaitingQuery = async function (userId, chatId, type, exercise 
 }
 module.exports.deleteQueries = async function(queries) {
     for (let i = 0; i < queries.length; i += 1) {
-        console.log(`About to delete ${i}`);
+        logger.debug(`About to delete ${i}`);
         await database.deleteWaitingQuery(queries[i].USERID, queries[i].ID);
-        console.log(`DELETION DONE`);
+        logger.debug(`DELETION DONE`);
     }
 
     return {status: 1};
