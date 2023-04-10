@@ -146,15 +146,24 @@ module.exports.sendMessageToTelegram = async function(chatId, messageObject) {
             return utils.getStandardRepsonse('Insufficent message data');
     }
 
-    if(messageObject.keyboard) {
-        if (messageObject.messageId) form.reply_to_message_id = messageObject.messageId;
+    if (messageObject.messageId) form.reply_to_message_id = messageObject.messageId;
 
-        form.reply_markup = JSON.stringify({
+    if(messageObject.keyboard) {
+        form.reply_markup = {
             keyboard: helper.createKeyboardLayout(messageObject.keyboard, _keyboard_cols),
             one_time_keyboard: messageObject.hideKeyboard ? true : false,
             selective: true
-        });
-    }    
+        };
+    }
+    if (messageObject.removeKeyboard) {
+        if (!form.reply_markup) form.reply_markup = {};
+
+        form.reply_markup.remove_keyboard = true;
+    }
+
+    if (form.reply_markup) {
+        form.reply_markup = JSON.stringify(form.reply_markup);
+    }
 
     let url = `${URL_BASE}${TELEGRAM_TOKEN}/${method}`;
 

@@ -264,10 +264,11 @@ module.exports.getUser = async function (userId) {
     };
     
     try {
+        console.log(`Getting user ${userId}`);
         let result = await dynamoDb.get(params).promise();    
-        result = result.Items || [];
-        console.log('Got user');
         console.log(result);
+        result = result.Item;
+        console.log('Got user');        
 
         return result;
     } catch (e) {

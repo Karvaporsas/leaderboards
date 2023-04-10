@@ -37,7 +37,8 @@ module.exports.chat = async function (event, chatId) {
     let result = {success: 0, message: "Nothing done"};
     
     let messageText = helper.getEventMessageText(event);    
-    let userId = helper.getEventUserId(event);    
+    let userId = helper.getEventUserId(event);
+    let messageId = helper.getEventMessageId(event);
     
     console.log(event);
     console.log(event.body);
@@ -52,9 +53,12 @@ module.exports.chat = async function (event, chatId) {
     if (!queries || !queries.length) return result;
     let first = queries[0];
     let exerciseCandidate = helper.getMessageText(event);    
-    let isValidScoreType = scoreService.isSupportedScoreType(exerciseCandidate);    
 
+    let isValidScoreType = scoreService.isSupportedScoreType(exerciseCandidate);
     if (first.QUERYTYPE === INTERNAL_STEPS.QUERYING_SCORETYPES && !isValidScoreType) return {status: 1, message: 'Did not recognize score type. Try again.', type: 'text'};
+
+    let isValidLeaderboardType = scoreService.isSupportedLeaderboardType(exerciseCandidate);
+    if (first.QUERYTYPE === INTERNAL_STEPS.QUERYING_SCORETYPE_FOR_LEADERBOARD && !isValidLeaderboardType) return {status: 1, message: 'Did not recognize leaderboard type. Try again.', type: 'text'};
     
     await queryingService.deleteQueries(queries);
     console.log("All deletions done. Determining next step");    
@@ -73,7 +77,7 @@ module.exports.chat = async function (event, chatId) {
             console.log(`Got ${reps} reps`);
             await queryingService.addWaitingQuery(userId, chatId, nextQuery, first.EXERCISE, reps);
             console.log("Asking weight");
-            result = await scoreService.askWeight(exercise);            
+            result = await scoreService.askWeight(first.EXERCISE);            
             return result;
 
         case INTERNAL_STEPS.QUERYING_WEIGHT:        
@@ -98,7 +102,7 @@ module.exports.chat = async function (event, chatId) {
             return result;
 
         case INTERNAL_STEPS.QUERYING_SCORETYPE_FOR_LEADERBOARD:
-            result = await scoreService.getLeaderboards(chatId, exerciseCandidate);
+            result = await scoreService.getLeaderboards(chatId, exerciseCandidate, messageId);
             return result;
 
         default:

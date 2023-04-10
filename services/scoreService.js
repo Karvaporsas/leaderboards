@@ -6,28 +6,33 @@ const helper = require('./../helper');
 const database = require('./../database/database');
 const _ = require('lodash');
 
+const WILKS_NEW = process.env.WILKS_NEW === 'ON';
+
 const combined = 'Combined score';
 const supportedTypes = ["Bench press", "Deadlift", "Squat"];
-/*const coeffs = {
+const coeffsOld = {
     a: -216.0475144,
     b: 16.2606339,
     c: -0.002388645,
     d: -0.00113732, 
     e: 7.01863 * Math.pow(10, -6),
-    f: -1.291 * Math.pow(10,-8)
-}*/
+    f: -1.291 * Math.pow(10,-8),
+    bigNumber: 500
+}
 
-const coeffs = {
+const coeffsNew = {
     a: 47.46178854,
     b: 8.472061379,
     c: 0.07369410346,
     d: -0.001395833811, 
     e: 7.07665973070743 * Math.pow(10, -6),
-    f: -1.20804336482315 * Math.pow(10,-8)
+    f: -1.20804336482315 * Math.pow(10,-8),
+    bigNumber: 600
 }
 
 function wilksCoeff (weight) {
-    return 600 / (coeffs.a + (coeffs.b * weight) + (coeffs.c * Math.pow(weight, 2)) + (coeffs.d * Math.pow(weight, 3)) + (coeffs.e * Math.pow(weight, 4)) + (coeffs.f * Math.pow(weight, 5)));
+    let coeffs = WILKS_NEW ? coeffsNew : coeffsOld;
+    return coeffs.bigNumber / (coeffs.a + (coeffs.b * weight) + (coeffs.c * Math.pow(weight, 2)) + (coeffs.d * Math.pow(weight, 3)) + (coeffs.e * Math.pow(weight, 4)) + (coeffs.f * Math.pow(weight, 5)));
 }
 
 function brzycki1RM (weight, reps) {
@@ -43,7 +48,7 @@ module.exports.askLeaderboardType = async function (userId, chatId, messageId) {
 }
 module.exports.askRepCount = async function (exercise = "") {    
     exercise = exercise.toLowerCase();
-    return {status: 1, message: `Give rep count for ${exercise}`, type: 'text'};
+    return {status: 1, message: `Give rep count for ${exercise}`, type: 'text', removeKeyboard: true};
 }
 module.exports.askWeight = async function (exercise = "") {
     exercise = exercise.toLowerCase();
@@ -75,29 +80,22 @@ module.exports.isSupportedScoreType = function (txt) {
     return false;
 }
 
-module.exports.getLeaderboards = async function (chatId, exercise) {
-    let isAggregated = exercise === combined;
-    console.log('Getting scores');
+module.exports.isSupportedLeaderboardType = function (txt) {
+    if (txt == combined) return true;
+
+    return this.isSupportedScoreType(txt);
+}
+
+module.exports.getLeaderboards = async function (chatId, exercise, messageId) {
+    let isAggregated = exercise === combined;    
     let searchExercise = isAggregated ? '' : exercise;
-    let rawScores = await database.getRelevantScores(chatId, searchExercise);
-    console.log(rawScores);
-    console.log('Getting users');
+    let rawScores = await database.getRelevantScores(chatId, searchExercise);    
     let usersByLatestChat = await database.getUsersInChat(chatId);
-    console.log(usersByLatestChat);
-    
-    /*let scoreUsers = [];
-    let scoreUserHash = {};
-    _.forEach(rawScores, (rs) => {
-        if (!scoreUserHash[rs.USERID]) {
-            scoreUserHash[rs.USERID] = true;
-            scoreUsers.push(rs.USERID);
-        }
-    });*/
     
     let grouped = _.groupBy(rawScores, (rs) => {
         return rs.USERID;
     });
-    console.log(grouped);
+    
     let scores = [];
     _.forEach(grouped, function (preScores, key) {
         let total1RMestimation = 0;
@@ -118,23 +116,24 @@ module.exports.getLeaderboards = async function (chatId, exercise) {
             totalWeight: totalWeight,
             hasEstimations: hasEstimations
         });
-    })
+    });
     console.log(scores);
-    _.forEach(scores, (s) => {
+
+    for (let i = 0; i < scores.length; i+= 1) {
+        let s = scores[i];
+
         s.rawScoreDisplay = `${s.WEIGHT} (${s.REPS})`;
+        s.wilksUsed = 0;
         let user = _.find(usersByLatestChat, ['USERID', s.USERID]);
-        
+
         if (!user) {
-            user = database.getUser(s.USERID);
+            user = await database.getUser(s.USERID);
         }
         if (user && user.WEIGHT > 0) {
-            console.log(s.hasEstimations);
-            console.log(s.estimated1RM * wilksCoeff(user.WEIGHT));
-            console.log(s.totalWeight * wilksCoeff(user.WEIGHT));
-            s.wilks500 = _.round((s.hasEstimations ? s.estimated1RM : s.totalWeight) * wilksCoeff(user.WEIGHT), 2);
+            s.wilksUsed = _.round((s.hasEstimations ? s.estimated1RM : s.totalWeight) * wilksCoeff(user.WEIGHT), 2);
         }
         s.estimated1RM = _.round(s.estimated1RM, 1);
-    });
+    }
 
     let sortedScores = _.orderBy(scores, ['WEIGHT', 'REPS'], ['desc', 'desc']);
     let rawScoreCols = [
@@ -142,20 +141,23 @@ module.exports.getLeaderboards = async function (chatId, exercise) {
     ];
 
     if (isAggregated) {
-        rawScoreCols.push({colProperty: 'estimated1RM', headerName: 'kg est tot'})
+        rawScoreCols.push({colProperty: 'estimated1RM', headerName: 'kg est tot'});
     } else {
-        rawScoreCols.push({colProperty: 'rawScoreDisplay', headerName: 'kg (reps)'});
-        rawScoreCols.push({colProperty: 'estimated1RM', headerName: '1RM est'});
+        rawScoreCols.push({colProperty: 'WEIGHT', headerName: 'kg'});
+        rawScoreCols.push({colProperty: 'REPS', headerName: 'reps'});
+        rawScoreCols.push({colProperty: 'estimated1RM', headerName: '1RM*'});
     }
     
 
-    let wilksSortedScores = _.orderBy(scores, ['wilks500'], ['desc']);
+    let wilksSortedScores = _.orderBy(scores, ['wilksUsed'], ['desc']);
     let wilksScoreCols = [
         {colProperty: 'USERNAME', headerName: 'Name'},        
-        {colProperty: 'wilks500', headerName: 'Score'}
+        {colProperty: 'wilksUsed', headerName: 'Score'}
     ];
     let raws = helper.formatListMessage(exercise, '', sortedScores, rawScoreCols);
     let wilks = helper.formatListMessage('', 'Wilks coefficent', wilksSortedScores, wilksScoreCols);
 
-    return {status: 1, type: 'text', message: `${raws}${wilks}`};
+    let suffix = '\n\n*If no 1RM is available, uses Brzycki\'s 1RM estimate'
+
+    return {status: 1, type: 'text', message: `${raws}${wilks}${suffix}`, removeKeyboard: true, messageId: messageId };
 }
