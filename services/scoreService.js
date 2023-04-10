@@ -162,7 +162,7 @@ module.exports.getLeaderboards = async function (chatId, exercise, messageId) {
         s.estimated1RM = _.round(s.estimated1RM, 1);
     }
 
-    let sortedScores = _.orderBy(scores, ['WEIGHT', 'REPS'], ['desc', 'desc']);
+    let sortedScores = _.orderBy(scores, [(isAggregated ? 'totalWeight' : 'WEIGHT'), 'REPS'], ['desc', 'desc']);
     let rawScoreCols = [
         {colProperty: 'USERNAME', headerName: 'Name'}        
     ];
