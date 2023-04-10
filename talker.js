@@ -4,9 +4,11 @@
 
 const helper = require('./helper');
 const scoreService = require('./services/scoreService');
+const userService = require('./services/userService');
 const queryingService = require('./services/queryingService');
 const utils = require('./utils');
 const INTERNAL_STEPS = utils.getInternalSteps();
+
 
 function determineNextQuery(type) {
     console.log(`Determining type ${type}`);
@@ -17,6 +19,10 @@ function determineNextQuery(type) {
             return INTERNAL_STEPS.QUERYING_WEIGHT;
         case INTERNAL_STEPS.QUERYING_WEIGHT:
             return INTERNAL_STEPS.READY_TO_SAVE;
+        case INTERNAL_STEPS.QUERYING_USER_HEIGHT:
+            return INTERNAL_STEPS.QUERYING_USER_WEIGHT;
+        case INTERNAL_STEPS.QUERYING_USER_WEIGHT:
+            return INTERNAL_STEPS.READY_TO_SAVE_USER_INFO;
         default:
             return null;
     }
@@ -75,6 +81,24 @@ module.exports.chat = async function (event, chatId) {
             console.log(`Got weight of ${weight}`);
             await scoreService.updateScore(userId, chatId, first.EXERCISE, first.REPS, weight, helper.getEventMessageName(event));
             result = await scoreService.informUser(first.EXERCISE, first.REPS, weight);
+            return result;
+
+        case INTERNAL_STEPS.QUERYING_USER_HEIGHT:
+            let height = parseFloat(messageText.replace(',','.'));
+            console.log(`Got height of ${height}`);
+            await queryingService.addWaitingQuery(userId, chatId, nextQuery, "", 0, 0, height);
+            result = userService.askUserWeight();
+            return result;
+
+        case INTERNAL_STEPS.QUERYING_USER_WEIGHT:
+            let userweight = parseFloat(messageText.replace(',','.'));
+            console.log(`Got weight of ${userweight}`);
+            await userService.updateUserInfo(userId, chatId, userweight, first.USERHEIGHT);
+            result = userService.informUser(userweight, first.USERHEIGHT);
+            return result;
+
+        case INTERNAL_STEPS.QUERYING_SCORETYPE_FOR_LEADERBOARD:
+            result = await scoreService.getLeaderboards(chatId, exerciseCandidate);
             return result;
 
         default:

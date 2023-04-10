@@ -9,9 +9,8 @@ const database = require('./../database/database');
 module.exports.loadWaitingQueries = async function (userId, chatId) {
     return await database.getWaitingQueries(userId, chatId);
 }
-module.exports.addWaitingQuery = async function (userId, chatId, type, exercise = "", reps = 0, weight = 0) {
-    console.log(`Adding waiting query ${userId}, ${chatId}, ${type}, ${exercise}, ${reps}, ${weight}`);
-    return await database.putWaitingQuery(userId, chatId, type, exercise, reps, weight);
+module.exports.addWaitingQuery = async function (userId, chatId, type, exercise = "", reps = 0, weight = 0, userHeight = 0, userWeight = 0) {    
+    return await database.putWaitingQuery(userId, chatId, type, exercise, reps, weight, userHeight, userWeight);
 }
 module.exports.deleteQueries = async function(queries) {
     for (let i = 0; i < queries.length; i += 1) {

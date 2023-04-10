@@ -4,30 +4,18 @@
 
 const helper = require('./helper');
 const scoreService = require('./services/scoreService');
+const userService = require('./services/userService');
 const queryingService = require('./services/queryingService');
 const utils = require('./utils');
-//const statsHandler = require('./handlers/statsHandler');
-//const pushHandler = require('./handlers/pushHanlder');
-//const chartsHandler = require('./handlers/chartsHandler');
+
 const INTERNAL_STEPS = utils.getInternalSteps();
 const SECRET_CHALLENGE = process.env.SECRET_CHALLENGE;
 
 const INTERNAL_COMMANDS = {
-    SET_SCORE: "setScore",
-    LEADERBOARDS: "leaderboards"
+    SET_SCORE: "setscore",
+    LEADERBOARDS: "leaderboards",
+    SET_USERINFO: "setuserinfo" 
 }
-
-function _getHelpMessage(resolve, reject) {
-    var message = `Harmi`;
-
-    resolve({
-        status: 1,
-        type: 'text',
-        message: message
-    });
-}
-
-
 
 /**
  * Commands
@@ -44,9 +32,16 @@ module.exports.processCommand = async function (event, chatId) {
     switch (command.name) {
         case INTERNAL_COMMANDS.SET_SCORE:
             await queryingService.addWaitingQuery(userId, chatId, INTERNAL_STEPS.QUERYING_SCORETYPES);
-            let response = scoreService.askScoreType(userId, chatId, messageId);
+            return scoreService.askScoreType(userId, chatId, messageId);
+            
+        case INTERNAL_COMMANDS.SET_USERINFO:
+            await queryingService.addWaitingQuery(userId, chatId, INTERNAL_STEPS.QUERYING_USER_HEIGHT);
+            return userService.askUserHeight();
 
-            return response;
+        case INTERNAL_COMMANDS.LEADERBOARDS:
+            await queryingService.addWaitingQuery(userId, chatId, INTERNAL_STEPS.QUERYING_SCORETYPE_FOR_LEADERBOARD);
+            return scoreService.askLeaderboardType(userId, chatId, messageId);
+
         default:
             console.log("Command not recognized");
             return result;

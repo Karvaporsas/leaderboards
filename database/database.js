@@ -3,8 +3,10 @@
 'use strict';
 
 const AWS = require('aws-sdk');
+const utils = require('./../utils');
 const WAITING_QUERIES = process.env.TABLE_WAITING_QUERIES;
 const USER_SCORE_LATEST = process.env.TABLE_USER_SCORE_LATEST;
+const USER = process.env.TABLE_USER;
 const uuid = require('uuid');
 const _ = require('lodash');
 const dynamoDb = new AWS.DynamoDB.DocumentClient();
@@ -24,7 +26,7 @@ module.exports.getWaitingQueries = async function(userId, chatId) {
             "#USERID": "USERID"
         },
         KeyConditionExpression: '#USERID = :userid',
-        ProjectionExpression: 'USERID, CHATID, QUERYTYPE, EXERCISE, REPS, WEIGHT, ID'
+        ProjectionExpression: 'USERID, CHATID, QUERYTYPE, EXERCISE, REPS, WEIGHT, ID, USERHEIGHT, USERWEIGHT'
     };
 
     console.log(`Getting waiting queries for ${userId} and ${chatId}`);
@@ -36,7 +38,35 @@ module.exports.getWaitingQueries = async function(userId, chatId) {
     return _.filter(result, ['CHATID', chatId]);
 }
 
-module.exports.putWaitingQuery = async function (userId, chatId, type, exercise, reps, weight) {
+module.exports.getRelevantScores = async function (chatId, exercise = "") {
+    let filterExpression = exercise ? '#CHATID = :chatId and #EXERCISE = :exercise' : '#CHATID = :chatId';
+    let params = {
+        TableName: USER_SCORE_LATEST,
+        FilterExpression: filterExpression,
+        ExpressionAttributeNames: {
+            '#CHATID': 'CHATID'
+        },
+        ExpressionAttributeValues: {
+            ':chatId': chatId
+        },
+        ProjectionExpression: 'USERID, CHATID, EXERCISE, REPS, WEIGHT, USERNAME, ID'
+    };
+
+    if (exercise) {
+        params.ExpressionAttributeNames['#EXERCISE'] = 'EXERCISE';
+        params.ExpressionAttributeValues[':exercise'] = exercise;
+    }
+
+    return await utils.performScan(dynamoDb, params).then((result) => {
+        result = result || [];
+
+        return _.filter(result, function (r) {
+            return r.REPS > 0;
+        });
+    });
+}
+
+module.exports.putWaitingQuery = async function (userId, chatId, type, exercise, reps, weight, userHeight, userWeight) {
     let params = {
         TableName: WAITING_QUERIES,
         Item: {
@@ -46,6 +76,8 @@ module.exports.putWaitingQuery = async function (userId, chatId, type, exercise,
             EXERCISE: exercise,
             REPS: reps,
             WEIGHT: weight,
+            USERHEIGHT: userHeight,
+            USERWEIGHT: userWeight,
             ID: uuid.v4()
         }
     };
@@ -107,6 +139,29 @@ module.exports.insertScore = async function (userId, chatId, exercise, reps, wei
     }    
 }
 
+module.exports.insertUser = async function (userId, chatId, weight, height) {
+    let params = {
+        TableName: USER,
+        Item: {
+            USERID: "" + userId,
+            WEIGHT: weight,
+            CHATID: chatId,
+            HEIGHT: height         
+        }
+    }
+
+    try {        
+        console.log('Inserting new user');
+        await dynamoDb.put(params).promise();
+        console.log('Done');
+        return {status: 1};
+    } catch (e) {
+        console.log('Stupd ass mofo');
+        console.log(e);
+        return {status: -1, message: 'User insert failed'};
+    }
+}
+
 module.exports.updateScore = async function (id, userId, chatId, exercise, reps, weight, username) {
     let params = {
         TableName: USER_SCORE_LATEST,
@@ -129,6 +184,35 @@ module.exports.updateScore = async function (id, userId, chatId, exercise, reps,
         }
     };
     console.log(`updating score ${id} of ${userId}`);
+    try {
+        await dynamoDb.update(params).promise();
+        return {status: 1};
+    } catch (e) {
+        console.log('Update failed bad');
+        console.log(e);
+        return {status: -1};
+    }    
+}
+
+module.exports.updateUser = async function (userId, chatId, weight, height) {
+    let params = {
+        TableName: USER,
+        Key: {
+            "USERID": "" + userId            
+        },
+        UpdateExpression: 'set  #weight = :weight, #height = :height, #chatId = :chatId',
+        ExpressionAttributeNames: {
+            '#weight': 'WEIGHT',
+            '#height': 'HEIGHT',
+            '#chatId': 'CHATID'
+        },
+        ExpressionAttributeValues: {
+            ':weight': weight,
+            ':height': height,
+            ':chatId': chatId
+        }
+    };
+
     try {
         await dynamoDb.update(params).promise();
         return {status: 1};
@@ -168,4 +252,47 @@ module.exports.getScore = async function (userId, chatId, exercise) {
         console.log(e);
         return false;
     }
+}
+
+module.exports.getUser = async function (userId) {
+    let params = {
+        TableName: USER,
+        Key: {
+            USERID: "" + userId
+        },
+        ProjectionExpression: 'USERID, WEIGHT, HEIGHT, CHATID'
+    };
+    
+    try {
+        let result = await dynamoDb.get(params).promise();    
+        result = result.Items || [];
+        console.log('Got user');
+        console.log(result);
+
+        return result;
+    } catch (e) {
+        console.log("oh noes");
+        console.log(e);
+        return false;
+    }
+}
+
+module.exports.getUsersInChat = async function (chatId) {
+    let params = {
+        TableName: USER,
+        FilterExpression: '#CHATID = :chatId',
+        ExpressionAttributeNames: {
+            '#CHATID': 'CHATID'            
+        },
+        ExpressionAttributeValues: {
+            ':chatId': chatId
+        },
+        ProjectionExpression: 'USERID, WEIGHT, HEIGHT, CHATID'
+    };
+
+    return await utils.performScan(dynamoDb, params).then((result) => {
+        result = result || [];
+
+        return result;
+    });
 }
