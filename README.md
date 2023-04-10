@@ -9,11 +9,11 @@
 
 > /setscore
 
-<ul>
-    <li> **setscore** - Set your score for an exercise </li>
-    <li> **setuserinfo** - Set your own information </li>
-    <li> **leaderboards** - See channel leaderboards </li>
-</ul>
+
+- **setscore** - Set your score for an exercise
+- **setuserinfo** - Set your own information
+- **leaderboards** - See channel leaderboards
+
 
 ## GDPR
 
