@@ -55,15 +55,15 @@ module.exports.chat = async function (event, chatId) {
     let first = queries[0];
     let exerciseCandidate = helper.getMessageText(event);    
 
+    await queryingService.deleteQueries(queries);
+    logger.debug("All deletions done. Determining next step");
+
     let isValidScoreType = scoreService.isSupportedScoreType(exerciseCandidate);
     if (first.QUERYTYPE === INTERNAL_STEPS.QUERYING_SCORETYPES && !isValidScoreType) return {status: 1, message: 'Did not recognize score type. Try again.', type: 'text'};
 
     let isValidLeaderboardType = scoreService.isSupportedLeaderboardType(exerciseCandidate);
     if (first.QUERYTYPE === INTERNAL_STEPS.QUERYING_SCORETYPE_FOR_LEADERBOARD && !isValidLeaderboardType) return {status: 1, message: 'Did not recognize leaderboard type. Try again.', type: 'text'};
-    
-    await queryingService.deleteQueries(queries);
-    logger.debug("All deletions done. Determining next step");    
-
+            
     let nextQuery = determineNextQuery(first.QUERYTYPE);
 
     switch (first.QUERYTYPE) {
