@@ -1,4 +1,4 @@
-# leaderboards
+# Leaderboards bot
 
 This is a lovely little bot for telegram that [Leaderboards bot](https://t.me/Mayhemboardbot) implements. Currently it does not track historical progress, only latest scores.
 
