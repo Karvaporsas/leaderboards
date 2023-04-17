@@ -8,6 +8,7 @@ const logger = require('./../logger');
 const WAITING_QUERIES = process.env.TABLE_WAITING_QUERIES;
 const USER_SCORE_LATEST = process.env.TABLE_USER_SCORE_LATEST;
 const USER = process.env.TABLE_USER;
+const USER_CHATS = process.env.TABLE_USER_CHATS;
 const uuid = require('uuid');
 const _ = require('lodash');
 const dynamoDb = new AWS.DynamoDB.DocumentClient();
@@ -36,19 +37,19 @@ module.exports.getWaitingQueries = async function(userId, chatId) {
 
     result = result.Items || [];
 
-    return _.filter(result, ['CHATID', chatId]);
+    return result;
 }
 
-module.exports.getRelevantScores = async function (chatId, exercise = "") {
-    let filterExpression = exercise ? '#CHATID = :chatId and #EXERCISE = :exercise' : '#CHATID = :chatId';
+module.exports.getRelevantScores = async function (exercise = "") {
+    let filterExpression = exercise ? '#EXERCISE = :exercise AND #REPS > :reps' : '#REPS > :reps';
     let params = {
         TableName: USER_SCORE_LATEST,
         FilterExpression: filterExpression,
         ExpressionAttributeNames: {
-            '#CHATID': 'CHATID'
+            '#REPS': 'REPS'
         },
         ExpressionAttributeValues: {
-            ':chatId': chatId
+            ':reps': 0
         },
         ProjectionExpression: 'USERID, CHATID, EXERCISE, REPS, WEIGHT, USERNAME, ID'
     };
@@ -242,7 +243,7 @@ module.exports.getScore = async function (userId, chatId, exercise) {
         logger.debug(result);
 
         return _.filter(result, function (s) {
-            return s.CHATID === chatId && s.EXERCISE === exercise;
+            return s.EXERCISE === exercise;
         });
     } catch (e) {
         logger.debug("oh noes");
@@ -272,22 +273,83 @@ module.exports.getUser = async function (userId) {
     }
 }
 
-module.exports.getUsersInChat = async function (chatId) {
+module.exports.getUsersInThisChat = async function (chatId) {    
     let params = {
-        TableName: USER,
+        TableName: USER_CHATS,
         FilterExpression: '#CHATID = :chatId',
         ExpressionAttributeNames: {
-            '#CHATID': 'CHATID'            
+            '#CHATID': 'CHATID'
         },
         ExpressionAttributeValues: {
-            ':chatId': chatId
+            ':chatId': "" + chatId
         },
-        ProjectionExpression: 'USERID, WEIGHT, HEIGHT, CHATID'
+        ProjectionExpression: 'USERID, CHATID'
+    };
+    logger.debug(`Getting user from chat ${chatId}`);
+
+    try {
+        var usrs = [];
+        
+        await utils.performScan(dynamoDb, params).then((result) => {
+            usrs = result || [];       
+        });
+
+        let wholeUsers = [];
+        for (let i = 0; i < usrs.length; i++) {
+            let r = usrs[i];
+            let usr = await this.getUser(r.USERID);
+            if (usr) wholeUsers.push(usr);
+        }
+
+        logger.debug(wholeUsers);
+
+        return wholeUsers;
+                                
+    } catch (e) {
+        logger.debug("oh noes");
+        logger.error(e);
+        return false;
+    }
+}
+
+module.exports.getUserChat = async function (userId, chatId) {
+    let params = {
+        TableName: USER_CHATS,
+        Key: {
+            USERID: "" + userId,
+            CHATID: "" + chatId
+        },
+        ProjectionExpression: 'USERID, CHATID'
     };
 
-    return await utils.performScan(dynamoDb, params).then((result) => {
-        result = result || [];
+    try {
+        let result = await dynamoDb.get(params).promise();
+        result = result.Item;
 
         return result;
-    });
+    } catch (e) {
+        logger.debug("FFFF");
+        logger.error(e);
+
+        return false;
+    }
+}
+
+module.exports.insertUserChat = async function (userid, chatId) {
+    let params = {
+        TableName: USER_CHATS,
+        Item: {
+            USERID: "" + userid,
+            CHATID: "" + chatId
+        }
+    };
+
+    try {        
+        await dynamoDb.put(params).promise();        
+        return {status: 1};
+    } catch (e) {
+        logger.debug('Why u do this to me');
+        logger.debug(e);
+        return {status: -1, message: 'User insert failed'};
+    }
 }

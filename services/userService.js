@@ -2,10 +2,7 @@
 /*jshint esversion: 6 */
 'use strict';
 
-const helper = require('./../helper');
 const database = require('./../database/database');
-
-
 
 module.exports.askUserHeight = function () {
     return {status: 1, message: 'Give your height in cm, for example 176', type: 'text'};
@@ -26,5 +23,16 @@ module.exports.updateUserInfo = async function (userId, chatId, weight = 0, heig
     }
 
     await database.insertUser(userId, chatId, weight, height);
+    return {status: 1};
+}
+
+module.exports.addUserChat = async function (userId, chatId) {
+    let existing = await database.getUserChat(userId, chatId);
+
+    if (existing && existing.length) {
+        return {status: 1};
+    }
+
+    await database.insertUserChat(userId, chatId);
     return {status: 1};
 }

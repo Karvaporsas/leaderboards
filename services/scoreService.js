@@ -4,6 +4,7 @@
 
 const helper = require('./../helper');
 const database = require('./../database/database');
+const userService = require('./userService');
 const _ = require('lodash');
 const logger = require('./../logger');
 
@@ -13,7 +14,7 @@ const combined = 'Combined score';
 const theBig3 = 'The Big 3';
 const theBig5 = 'The Big 5';
 const supportedTypes = ["Bench press", "Deadlift", "Squat", "Overhead press", "Curl"/*, "Chin up", "Pull up", "Push up"*/];
-const groups = [
+const _groups = [
     {name: theBig3, members: [supportedTypes[0], supportedTypes[1], supportedTypes[2]]},
     {name: theBig5, members: [supportedTypes[0], supportedTypes[1], supportedTypes[2], supportedTypes[3], supportedTypes[4]]},
     /*{name: "Bodyweight", members: [supportedTypes[5], supportedTypes[6], supportedTypes[7]]}*/
@@ -50,7 +51,7 @@ function brzycki1RM (weight, reps) {
 function isFromGroup(txt) {
     let result = false;
 
-    _.forEach(groups, function (g) {
+    _.forEach(_groups, function (g) {
         if (g.name == txt) result = true;
     });
 
@@ -79,6 +80,7 @@ module.exports.informUser = async function (exercise, reps, weight) {
 module.exports.updateScore = async function (userId, chatId, exercise, reps = 0, weight = 0, username = "") {
     logger.debug(`About to update ${userId}, ${chatId}, ${exercise}, ${reps}, ${weight} for ${username}`);
     let existing = await database.getScore(userId, chatId, exercise);
+    await userService.addUserChat(userId, chatId);
 
     if (existing && existing.length) {
         await database.updateScore(existing[0].ID, userId, chatId, exercise, reps, weight, username);
@@ -107,10 +109,10 @@ module.exports.isSupportedLeaderboardType = function (txt) {
 module.exports.getLeaderboards = async function (chatId, exercise, messageId) {
     let isAggregated = exercise === combined || isFromGroup(exercise);
     let searchExercise = isAggregated ? '' : exercise;
-    let rawScores = await database.getRelevantScores(chatId, searchExercise);
+    let rawScores = await database.getRelevantScores(searchExercise);
     
     if (isFromGroup(exercise)) {
-        let group = _.find(groups, ['name', exercise]);
+        let group = _.find(_groups, ['name', exercise]);
         rawScores = _.filter(rawScores, function (rs) {
             return _.find(group.members, (m) => {
                 return m === rs.EXERCISE;
@@ -118,12 +120,17 @@ module.exports.getLeaderboards = async function (chatId, exercise, messageId) {
         });
     }
 
-    let usersByLatestChat = await database.getUsersInChat(chatId);
+    let usersByChat = await database.getUsersInThisChat(chatId);
+    rawScores = _.filter(rawScores, function (rs) {
+        return _.find(usersByChat, ['USERID', rs.USERID]);
+    });
+
+    logger.debug(`rawScores: ${JSON.stringify(rawScores)}`);
     
     let grouped = _.groupBy(rawScores, (rs) => {
         return rs.USERID;
     });
-    
+    logger.debug(`grouped: ${JSON.stringify(grouped)}`);
     let scores = [];
     _.forEach(grouped, function (preScores, key) {
         let total1RMestimation = 0;
@@ -145,16 +152,16 @@ module.exports.getLeaderboards = async function (chatId, exercise, messageId) {
             hasEstimations: hasEstimations
         });
     });    
-
+    
     for (let i = 0; i < scores.length; i+= 1) {
         let s = scores[i];
 
         s.rawScoreDisplay = `${s.WEIGHT} (${s.REPS})`;
         s.wilksUsed = 0;
-        let user = _.find(usersByLatestChat, ['USERID', s.USERID]);
+        let user = _.find(usersByChat, ['USERID', s.USERID]);
 
         if (!user) {
-            user = await database.getUser(s.USERID);
+            continue;
         }
         if (user && user.WEIGHT > 0) {
             s.wilksUsed = _.round((s.hasEstimations ? s.estimated1RM : s.totalWeight) * wilksCoeff(user.WEIGHT), 2);

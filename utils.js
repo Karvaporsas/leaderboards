@@ -45,11 +45,12 @@ module.exports.performScan = async function(dynamoDb, params) {
                 logger.debug("no data, no error");
                 resolve(allResults);
             }
-            allResults = allResults.concat(data.Items);
+            
+            if (data && data.Items) allResults = allResults.concat(data.Items);
 
             // continue scanning if we have more, because
             // scan can retrieve a maximum of 1MB of data
-            if (typeof data.LastEvaluatedKey != "undefined") {
+            if (data && typeof data.LastEvaluatedKey != "undefined") {
                 logger.debug("Scanning for more...");
                 params.ExclusiveStartKey = data.LastEvaluatedKey;
                 dynamoDb.scan(params, chatScan);

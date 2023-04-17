@@ -8,5 +8,9 @@ module.exports.debug = function (item) {
     if (DEBUG_MODE) console.log(item);
 }
 module.exports.fatal = function (item) {
-    console.log(item);
+    console.log("FATAL");
+    console.error(item);
+}
+module.exports.error = function (item) {
+    console.error(item);
 }
