@@ -36,3 +36,13 @@ module.exports.addUserChat = async function (userId, chatId) {
     await database.insertUserChat(userId, chatId);
     return {status: 1};
 }
+
+module.exports.getUserInfo = async function (userId) {
+    let existing = await database.getUser(userId);
+
+    if (existing) {
+        return existing;
+    }
+
+    return false;
+}

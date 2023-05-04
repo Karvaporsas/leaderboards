@@ -51,7 +51,7 @@ module.exports.getRelevantScores = async function (exercise = "") {
         ExpressionAttributeValues: {
             ':reps': 0
         },
-        ProjectionExpression: 'USERID, CHATID, EXERCISE, REPS, WEIGHT, USERNAME, ID'
+        ProjectionExpression: 'USERID, CHATID, EXERCISE, REPS, WEIGHT, USERNAME, ID, USERWEIGHT'
     };
 
     if (exercise) {
@@ -115,7 +115,7 @@ module.exports.deleteWaitingQuery = async function (userId, id) {
     }
 }
 
-module.exports.insertScore = async function (userId, chatId, exercise, reps, weight, username) {
+module.exports.insertScore = async function (userId, chatId, exercise, reps, weight, username, userWeight) {
     let params = {
         TableName: USER_SCORE_LATEST,
         Item: {
@@ -125,7 +125,8 @@ module.exports.insertScore = async function (userId, chatId, exercise, reps, wei
             REPS: reps,
             WEIGHT: weight,
             USERNAME: username,
-            ID: uuid.v4()            
+            USERWEIGHT: userWeight,
+            ID: uuid.v4()
         }
     }
 
@@ -160,25 +161,27 @@ module.exports.insertUser = async function (userId, chatId, weight, height) {
     }
 }
 
-module.exports.updateScore = async function (id, userId, chatId, exercise, reps, weight, username) {
+module.exports.updateScore = async function (id, userId, chatId, exercise, reps, weight, username, userWeight) {
     let params = {
         TableName: USER_SCORE_LATEST,
         Key: {
             "USERID": "" + userId,
             "ID": id
         },
-        UpdateExpression: 'set #exercise = :exercise, #reps = :reps, #weight = :weight, #username = :username',
+        UpdateExpression: 'set #exercise = :exercise, #reps = :reps, #weight = :weight, #username = :username, #userweight = :userweight',
         ExpressionAttributeNames: {
             '#exercise': 'EXERCISE',
             '#reps': 'REPS',
             '#weight': 'WEIGHT',
-            '#username': 'USERNAME'
+            '#username': 'USERNAME',
+            '#userweight': 'USERWEIGHT'
         },
         ExpressionAttributeValues: {
             ':exercise': exercise,
             ':reps': reps,
             ':weight': weight,
-            ':username': username
+            ':username': username,
+            ':userweight': userWeight
         }
     };
     logger.debug(`updating score ${id} of ${userId}`);
@@ -231,7 +234,7 @@ module.exports.getScore = async function (userId, chatId, exercise) {
             '#USERID': 'USERID'
         },
         KeyConditionExpression: '#USERID = :userid',
-        ProjectionExpression: 'ID, USERID, CHATID, EXERCISE, REPS, WEIGHT'
+        ProjectionExpression: 'ID, USERID, CHATID, EXERCISE, REPS, WEIGHT, USERWEIGHT'
     };   
 
     try {
