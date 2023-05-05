@@ -58,6 +58,12 @@ function brzycki1RM (weight, reps) {
     return weight / divider;    
 }
 
+function bw1RM(weight, reps) {
+    if (reps === 0) return 0;
+    if (reps === 1) return 0;
+    return  (weight*(100/(101-reps*1.75))) - weight;
+}
+
 function isFromGroup(txt) {
     let result = false;
 
@@ -159,7 +165,8 @@ module.exports.getLeaderboards = async function (chatId, exercise, messageId) {
             let isBW = isBodyWeightExercise(ps.EXERCISE);
             let effectiveWeight = isBW ? ps.USERWEIGHT + ps.WEIGHT : ps.WEIGHT;
             if (isBW) {
-                total1RMestimation += (ps.REPS > 1 ? brzycki1RM(effectiveWeight, ps.REPS) : effectiveWeight) - ps.USERWEIGHT;
+                total1RMestimation += (ps.REPS > 1 ? bw1RM(effectiveWeight, ps.REPS) : effectiveWeight) + ps.WEIGHT;// - ps.USERWEIGHT;
+                logger.debug('total1RMestimation: ' + total1RMestimation);
             } else {
                 total1RMestimation += ps.REPS > 1 ? brzycki1RM(effectiveWeight, ps.REPS) : effectiveWeight;
             }            
