@@ -8,6 +8,8 @@ When setting own records, no 1RM is required. If user inserts score with more re
 
 Leaderboard also shows calculated [Wilk's coefficient](https://en.wikipedia.org/wiki/Wilks_coefficient) for your calculated 1RM score.
 
+Bodyweight exercises are calculated a bit differently using a small sample size correction to 1RM estimate. This will be improved if necessary. 
+
 ## Known commands
 
 When used, each command starts with /-sign, like so
@@ -19,6 +21,18 @@ When used, each command starts with /-sign, like so
 - **setuserinfo** - Set your own information
 - **leaderboards** - See channel leaderboards
 
+## Excercise groups 
+
+Bot calculates also combined scores for aggregated results. These are:
+
+### The big three
+Deadlift, bench preaa and squat combined score from estimated 1RM's
+
+### The big five
+The big three plus overhead press and curl.
+
+### Bodyweight 
+Pull ups and dips. 1RM weight is being calculated a bit differently than other exercises to give more realistic scores.
 
 ## GDPR
 
