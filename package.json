@@ -30,7 +30,7 @@
   "homepage": "https://github.com/Karvaporsas/leaderboards#readme",
   "dependencies": {
     "aws-sdk": "^2.1354.0",
-    "axios": "^1.3.4",
+    "axios": "^1.6.0",
     "lodash": "^4.17.21",
     "uuid": "^9.0.0"
   },
